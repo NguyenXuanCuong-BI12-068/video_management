@@ -12,6 +12,7 @@ from django.utils.timezone import now as djnow, localtime, make_aware
 from django.contrib.auth import get_user_model
 from common.permission import has_permission
 from .models import PermissionEnum
+from common.utils import *
 # Create your views here.
 class BaseModelViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -84,6 +85,7 @@ class UserViewSet(BaseModelViewSet):
                 return Response({'detail': 'Invalid password'}, status=status.HTTP_401_UNAUTHORIZED)
             user.last_login = djnow()
             user.save(update_fields=["last_login"])
+            log_activity(user, "LOGIN")
             return Response({
                 'detail': 'Login successful',
                 'user': {
@@ -95,5 +97,44 @@ class UserViewSet(BaseModelViewSet):
             }, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+    @action(detail=False, methods=['put'])
+    def updateProfile(self, request):
+        user = request.user
+        data = request.data.copy()
+
+        if "password" in data:
+            data.pop("password")
+
+        serializer = UserSerializer(user, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        log_activity(user, "UPDATE_PROFILE")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['put'])
+    def updatePassword(self, request):
+        user = request.user
+        old_password = request.data.get("old_password")
+        new_password = request.data.get("new_password")
+
+        if not old_password or not new_password:
+            return Response({"detail": "Old and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.check_password(old_password):
+            return Response({"detail": "Old password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        log_activity(user, "CHANGE_PASSWORD")
+
+        return Response({"detail": "Password updated successfully"}, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'])
+    def logout(self, request):
+        user = request.user
+        log_activity(user, "LOGOUT")
+        return Response({"detail": "Logout successful"}, status=status.HTTP_200_OK)
+
     
 

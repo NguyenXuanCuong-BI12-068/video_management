@@ -89,9 +89,19 @@ class User(AbstractBaseUser, PermissionsMixin):
 # Activity Log
 # -------------------------------
 class ActivityLog(models.Model):
+    ACTION_CHOICES = [
+        ("LOGIN", "Login"),
+        ("LOGOUT", "Logout"),
+        ("UPLOAD_VIDEO", "Upload video"),
+        ("WATCH_VIDEO", "Watch video"),
+        ("UPDATE_PROFILE", "Update profile"),
+        ("CHANGE_PASSWORD", "Change password"),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="activity_logs")
-    action = models.CharField(max_length=255)
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.action} @ {self.timestamp}"
+        return f"{self.user.email} - {self.action} at {self.timestamp}"
+
