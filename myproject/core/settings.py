@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'users',
+    'videos',
 ]
 
 MIDDLEWARE = [
@@ -88,6 +89,10 @@ DATABASES = {
         }
     }
 }
+#MONGODB
+MONGODB_URI = os.getenv("MONGODB_URI", "")
+MONGODB_DATABASE = os.getenv("MONGODB_DATABASE", "")
+MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION", "")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

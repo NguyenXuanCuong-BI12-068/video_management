@@ -1,4 +1,5 @@
-from users.models import Role, PermissionEnum, User
+from users.models import Role, User
+from .utils import PermissionEnum
 
 def init_db():
     try:

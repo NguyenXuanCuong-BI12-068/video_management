@@ -1,23 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.core.exceptions import ValidationError
-from enum import Enum
+from common.utils import validate_permissions
 
-class PermissionEnum(str, Enum):
-    UPLOAD_VIDEO = "upload_video"
-    DELETE_VIDEO = "delete_video"
-    MANAGE_USERS = "manage_users"
-    WATCH_VIDEO = "watch_video"
-    COMMENT = "comment"
-    LIKE = "like"
+
 # -------------------------------
 # Role Model
 # -------------------------------
-def validate_permissions(value):
-    invalid = [v for v in value if v not in PermissionEnum._value2member_map_]
-    if invalid:
-        raise ValidationError(f"Invalid permissions: {invalid}")
-
 class Role(models.Model):
     name = models.CharField(max_length=50, unique=True)   # Admin, User, Guest
     permissions = models.JSONField(default=list, blank=True, validators=[validate_permissions])  # List Enum values

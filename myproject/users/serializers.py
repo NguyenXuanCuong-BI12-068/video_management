@@ -35,3 +35,6 @@ class ActivityLogSerializer(serializers.ModelSerializer):
         model = ActivityLog
         fields = '__all__'
 
+    def log_activity(self, user, action):
+        ActivityLog.objects.create(user=user, action=action)
+
