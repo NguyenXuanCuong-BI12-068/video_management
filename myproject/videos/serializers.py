@@ -16,9 +16,13 @@ class VideoSerializer(serializers.Serializer):
 
     id = serializers.CharField(read_only=True)
     uploaderId = serializers.CharField(read_only=True)
-    
+    file = serializers.FileField(default=None)
+    video_url = serializers.URLField(default=None)
     title = serializers.CharField()
     description = serializers.CharField()
+    duration = serializers.FloatField(default=0.0)
+    size = serializers.FloatField(default=0.0)
+    resolution = serializers.CharField(default='0x0')
     status = serializers.ChoiceField(choices=STATUS_CHOICES, default='active')
     privacy = serializers.ChoiceField(choices=PRIVACY_CHOICES, default='public')
     uploadDate = serializers.DateTimeField(default=datetime.now)
@@ -35,6 +39,11 @@ class VideoSerializer(serializers.Serializer):
         document = {
             'title': validated_data['title'],
             'description': validated_data['description'],
+            'file': self.context['file'],
+            'video_url': self.context['file'],
+            'duration': self.context['duration'],
+            'size': self.context['size'],
+            'resolution': self.context['resolution'],
             'status': validated_data['status'],
             'privacy': validated_data['privacy'],
             'uploadDate': validated_data['uploadDate'],

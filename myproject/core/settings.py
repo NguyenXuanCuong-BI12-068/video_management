@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import cloudinary
 from dotenv import load_dotenv
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users',
     'videos',
+    'cloudinary',
 ]
 
 MIDDLEWARE = [
@@ -162,3 +164,14 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 GOOGLE_OAUTH2_CLIENT_ID = os.getenv("GOOGLE_OAUTH2_CLIENT_ID", None)
 GOOGLE_OAUTH2_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH2_CLIENT_SECRET", None)
 GOOGLE_REDIRECT_URI = "http://127.0.0.1:8000/users/auth/login-sso/"
+
+if not os.getenv('CLOUDINARY_API_SECRET'):
+    raise Exception('CLOUDINARY_API_SECRET environment variable is not set.')
+
+cloudinary.config(
+  cloud_name = 'deughmy4m',
+  api_key = '765221444619776',
+  api_secret = os.getenv('CLOUDINARY_API_SECRET'),
+  secure = True,
+)
+URL_CLOUD_NAME="https://res.cloudinary.com/deughmy4m/video/upload"

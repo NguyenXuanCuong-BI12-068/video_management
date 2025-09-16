@@ -10,10 +10,10 @@ from common.pagination import CustomPagination
 from common.utils import *
 from .serializers import *
 import pymongo
+import cloudinary.uploader
+import cloudinary.api
+import ffmpeg
 # Create your views here.
-client = pymongo.MongoClient(settings.MONGODB_URI)
-db = client[settings.MONGODB_DATABASE]
-collection = db[settings.MONGODB_COLLECTION]
 
 class BaseModelViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -28,8 +28,7 @@ class BaseModelViewSet(viewsets.ModelViewSet):
         collection = db[settings.MONGODB_COLLECTION]
         user_id = request.user.id
         documents = list(collection.find(
-            {'is_deleted': False, 'uploaderId': user_id},
-            {'title': 1, 'description': 1, 'uploadDate': 1}
+            {'is_deleted': False, 'uploaderId': user_id}
         ).sort('uploadDate', -1))
 
         for doc in documents:
@@ -43,7 +42,17 @@ class BaseModelViewSet(viewsets.ModelViewSet):
 
     @has_permission(PermissionEnum.UPLOAD_VIDEO.value)
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, context={'request': request})
+        video_uploaded = self.process_video(request.data['file'], request.data['title'])
+        serializer = self.get_serializer(
+            data=request.data,
+            context={
+                'request': request,
+                'file': video_uploaded['url'],
+                'duration': video_uploaded['duration'],
+                'size': video_uploaded['size'],
+                'resolution': video_uploaded['resolution'],
+            }
+        )
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -71,11 +80,58 @@ class BaseModelViewSet(viewsets.ModelViewSet):
         db = client[settings.MONGODB_DATABASE]
         collection = db[settings.MONGODB_COLLECTION]
         _id = kwargs.get("pk")
-        collection.find_one_and_update({'_id': ObjectId(_id)}, {'$set': {'is_deleted': True}})
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        response = collection.find_one_and_update({'_id': ObjectId(_id)}, {'$set': {'is_deleted': True}})
+        public_id = response['title']
+        cloud_deleted = cloudinary.uploader.destroy(public_id, resource_type ="video", type="upload")
+
+        return Response(cloud_deleted, status=status.HTTP_200_OK)
+    
+    def process_video(self, video_file, video_id):
+        client = pymongo.MongoClient(settings.MONGODB_URI)
+        db = client[settings.MONGODB_DATABASE]
+        collection = db["video-information"]
+
+        upload_result = cloudinary.uploader.upload_large(
+            video_file,
+            resource_type="video",
+            public_id=video_id,
+            chunk_size=10 * 1024 * 1024,
+            eager=[
+                {"width": 1920, "height": 1080, "crop": "scale", "video_codec": "h264"},
+                {"width": 1920, "height": 1080, "crop": "scale", "quality": 30, "video_codec": "h264"},
+                {"width": 1920, "height": 1080, "crop": "scale", "quality": 10, "video_codec": "h264"},
+            ],
+            eager_async=False
+        )
+
+        thumb_url = cloudinary.CloudinaryImage(video_id).video_thumbnail(
+            width=300, height=200, resource_type="video"
+        )
+
+        result = {
+            "id": video_id,
+            "url": upload_result['secure_url'],
+            "duration": upload_result['duration'],
+            "size": upload_result['bytes'],
+            "resolution": f"{upload_result['width']}x{upload_result['height']}",
+            "width": upload_result['width'],
+            "height": upload_result['height'],
+            "formats": {
+                "1080p": upload_result['eager'][0].get('secure_url') or upload_result['eager'][0].get('url'),
+                "720p": upload_result['eager'][1].get('secure_url') or upload_result['eager'][1].get('url'),
+                "480p": upload_result['eager'][2].get('secure_url') or upload_result['eager'][2].get('url'),
+            },
+            "thumbnail": thumb_url
+        }
+        collection.insert_one(result)
+        return result
+
     
 
 class VideoViewSet(BaseModelViewSet):
+    client = pymongo.MongoClient(settings.MONGODB_URI)
+    db = client[settings.MONGODB_DATABASE]
+    collection = db[settings.MONGODB_COLLECTION]
     queryset = list(collection.find())
     serializer_class = VideoSerializer
 

@@ -14,3 +14,5 @@ google-auth==2.40.3
 google-auth-oauthlib==1.2.2
 google-auth-httplib2==0.2.0
 pymongo==4.13.2
+cloudinary==1.44.1
+ffmpeg-python==0.2.0
